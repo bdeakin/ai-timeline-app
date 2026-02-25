@@ -9,8 +9,11 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("AI transformation headlines: 2027-2030")
-st.caption("Mouse over any article to see details")
+st.title("AI Transformation News Hub")
+st.caption("Headlines from 2027-2030 · Powered by Snowflake Cortex Agents")
+
+# Main navigation
+main_tab1, main_tab2 = st.tabs(["Timeline", "Cortex Agents"])
 
 # Embedded data from Snowflake
 ARTICLES_DATA = [
@@ -53,154 +56,363 @@ ARTICLES_DATA = [
 df = pd.DataFrame(ARTICLES_DATA)
 df["publish_date"] = pd.to_datetime(df["publish_date"])
 
-# Sidebar filters
-with st.sidebar:
-    st.header("Filters")
+# ============================================
+# TAB 1: Timeline
+# ============================================
+with main_tab1:
+    st.subheader("AI Transformation Headlines: 2027-2030")
+    st.caption("Mouse over any article to see details")
     
-    years = st.multiselect(
-        "Year",
-        options=sorted(df["publish_year"].unique()),
-        default=sorted(df["publish_year"].unique()),
-    )
-    
-    topics = st.multiselect(
-        "Topic",
-        options=sorted(df["topic_category"].unique()),
-        default=sorted(df["topic_category"].unique()),
-    )
-    
-    sentiment_range = st.slider(
-        "Sentiment range",
-        min_value=-1.0,
-        max_value=1.0,
-        value=(-1.0, 1.0),
-        step=0.1,
-    )
-
-# Apply filters
-filtered_df = df[
-    (df["publish_year"].isin(years)) &
-    (df["topic_category"].isin(topics)) &
-    (df["overall_sentiment"] >= sentiment_range[0]) &
-    (df["overall_sentiment"] <= sentiment_range[1])
-].copy()
-
-# Format views for tooltip
-filtered_df["views_formatted"] = filtered_df["total_views"].apply(
-    lambda x: f"{x/1_000_000:.1f}M" if x >= 1_000_000 else f"{x/1_000:.0f}K"
-)
-
-# Create sentiment category for coloring
-def sentiment_label(val):
-    if val <= -0.3:
-        return "Negative"
-    elif val >= 0.3:
-        return "Positive"
-    return "Neutral"
-
-filtered_df["sentiment_label"] = filtered_df["overall_sentiment"].apply(sentiment_label)
-
-# Summary stats
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("Articles", len(filtered_df))
-with col2:
-    st.metric("Total views", f"{filtered_df['total_views'].sum()/1_000_000:.1f}M")
-with col3:
-    avg_sentiment = filtered_df["overall_sentiment"].mean()
-    st.metric("Avg sentiment", f"{avg_sentiment:.2f}")
-with col4:
-    st.metric("Social shares", f"{filtered_df['social_shares'].sum()/1_000_000:.1f}M")
-
-st.write("")
-
-# Timeline chart with Altair
-base = alt.Chart(filtered_df).encode(
-    x=alt.X(
-        "publish_date:T",
-        title="Publication date",
-        axis=alt.Axis(format="%b %Y", labelAngle=-45),
-    ),
-    y=alt.Y(
-        "topic_category:N",
-        title="Topic",
-        sort=sorted(filtered_df["topic_category"].unique()),
-    ),
-    color=alt.Color(
-        "sentiment_label:N",
-        title="Sentiment",
-        scale=alt.Scale(
-            domain=["Negative", "Neutral", "Positive"],
-            range=["#e74c3c", "#95a5a6", "#27ae60"],
-        ),
-        legend=alt.Legend(orient="top"),
-    ),
-    size=alt.Size(
-        "total_views:Q",
-        title="Views",
-        scale=alt.Scale(range=[100, 1000]),
-        legend=None,
-    ),
-    tooltip=[
-        alt.Tooltip("headline:N", title="Headline"),
-        alt.Tooltip("subheadline:N", title="Summary"),
-        alt.Tooltip("publication_name:N", title="Publication"),
-        alt.Tooltip("author_name:N", title="Author"),
-        alt.Tooltip("publish_date:T", title="Date", format="%B %d, %Y"),
-        alt.Tooltip("topic_category:N", title="Topic"),
-        alt.Tooltip("views_formatted:N", title="Views"),
-        alt.Tooltip("overall_sentiment:Q", title="Sentiment", format=".2f"),
-        alt.Tooltip("reading_time_minutes:Q", title="Read time (min)"),
-    ],
-)
-
-points = base.mark_circle(opacity=0.8, stroke="white", strokeWidth=1)
-
-chart = (
-    points
-    .properties(height=500)
-    .interactive()
-)
-
-st.altair_chart(chart, use_container_width=True)
-
-# Year breakdown
-st.subheader("Articles by year")
-
-year_tabs = st.tabs([str(y) for y in sorted(filtered_df["publish_year"].unique())])
-
-for tab, year in zip(year_tabs, sorted(filtered_df["publish_year"].unique())):
-    with tab:
-        year_df = filtered_df[filtered_df["publish_year"] == year].sort_values("publish_date")
+    # Sidebar filters
+    with st.sidebar:
+        st.header("Filters")
         
-        for _, row in year_df.iterrows():
-            sentiment = row["overall_sentiment"]
-            if sentiment <= -0.3:
-                badge_color = "red"
-                badge_text = "Negative"
-            elif sentiment >= 0.3:
-                badge_color = "green"
-                badge_text = "Positive"
-            else:
-                badge_color = "gray"
-                badge_text = "Neutral"
+        years = st.multiselect(
+            "Year",
+            options=sorted(df["publish_year"].unique()),
+            default=sorted(df["publish_year"].unique()),
+        )
+        
+        topics = st.multiselect(
+            "Topic",
+            options=sorted(df["topic_category"].unique()),
+            default=sorted(df["topic_category"].unique()),
+        )
+        
+        sentiment_range = st.slider(
+            "Sentiment range",
+            min_value=-1.0,
+            max_value=1.0,
+            value=(-1.0, 1.0),
+            step=0.1,
+        )
+
+    # Apply filters
+    filtered_df = df[
+        (df["publish_year"].isin(years)) &
+        (df["topic_category"].isin(topics)) &
+        (df["overall_sentiment"] >= sentiment_range[0]) &
+        (df["overall_sentiment"] <= sentiment_range[1])
+    ].copy()
+
+    # Format views for tooltip
+    filtered_df["views_formatted"] = filtered_df["total_views"].apply(
+        lambda x: f"{x/1_000_000:.1f}M" if x >= 1_000_000 else f"{x/1_000:.0f}K"
+    )
+
+    # Create sentiment category for coloring
+    def sentiment_label(val):
+        if val <= -0.3:
+            return "Negative"
+        elif val >= 0.3:
+            return "Positive"
+        return "Neutral"
+
+    filtered_df["sentiment_label"] = filtered_df["overall_sentiment"].apply(sentiment_label)
+
+    # Summary stats
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Articles", len(filtered_df))
+    with col2:
+        st.metric("Total views", f"{filtered_df['total_views'].sum()/1_000_000:.1f}M")
+    with col3:
+        avg_sentiment = filtered_df["overall_sentiment"].mean()
+        st.metric("Avg sentiment", f"{avg_sentiment:.2f}")
+    with col4:
+        st.metric("Social shares", f"{filtered_df['social_shares'].sum()/1_000_000:.1f}M")
+
+    st.write("")
+
+    # Timeline chart with Altair
+    base = alt.Chart(filtered_df).encode(
+        x=alt.X(
+            "publish_date:T",
+            title="Publication date",
+            axis=alt.Axis(format="%b %Y", labelAngle=-45),
+        ),
+        y=alt.Y(
+            "topic_category:N",
+            title="Topic",
+            sort=sorted(filtered_df["topic_category"].unique()),
+        ),
+        color=alt.Color(
+            "sentiment_label:N",
+            title="Sentiment",
+            scale=alt.Scale(
+                domain=["Negative", "Neutral", "Positive"],
+                range=["#e74c3c", "#95a5a6", "#27ae60"],
+            ),
+            legend=alt.Legend(orient="top"),
+        ),
+        size=alt.Size(
+            "total_views:Q",
+            title="Views",
+            scale=alt.Scale(range=[100, 1000]),
+            legend=None,
+        ),
+        tooltip=[
+            alt.Tooltip("headline:N", title="Headline"),
+            alt.Tooltip("subheadline:N", title="Summary"),
+            alt.Tooltip("publication_name:N", title="Publication"),
+            alt.Tooltip("author_name:N", title="Author"),
+            alt.Tooltip("publish_date:T", title="Date", format="%B %d, %Y"),
+            alt.Tooltip("topic_category:N", title="Topic"),
+            alt.Tooltip("views_formatted:N", title="Views"),
+            alt.Tooltip("overall_sentiment:Q", title="Sentiment", format=".2f"),
+            alt.Tooltip("reading_time_minutes:Q", title="Read time (min)"),
+        ],
+    )
+
+    points = base.mark_circle(opacity=0.8, stroke="white", strokeWidth=1)
+
+    chart = (
+        points
+        .properties(height=500)
+        .interactive()
+    )
+
+    st.altair_chart(chart, use_container_width=True)
+
+    # Year breakdown
+    st.subheader("Articles by year")
+
+    year_tabs = st.tabs([str(y) for y in sorted(filtered_df["publish_year"].unique())])
+
+    for tab, year in zip(year_tabs, sorted(filtered_df["publish_year"].unique())):
+        with tab:
+            year_df = filtered_df[filtered_df["publish_year"] == year].sort_values("publish_date")
             
-            with st.container(border=True):
-                st.markdown(f"**{row['headline']}**")
-                st.caption(f"{row['publication_name']} · {row['author_name']} · {row['publish_date'].strftime('%B %d, %Y')}")
-                st.write(row["subheadline"])
+            for _, row in year_df.iterrows():
+                sentiment = row["overall_sentiment"]
+                if sentiment <= -0.3:
+                    badge_color = "red"
+                    badge_text = "Negative"
+                elif sentiment >= 0.3:
+                    badge_color = "green"
+                    badge_text = "Positive"
+                else:
+                    badge_color = "gray"
+                    badge_text = "Neutral"
                 
-                mcol1, mcol2, mcol3, mcol4 = st.columns(4)
-                with mcol1:
-                    if badge_color == "red":
-                        st.markdown(f":red[{badge_text}]")
-                    elif badge_color == "green":
-                        st.markdown(f":green[{badge_text}]")
-                    else:
-                        st.markdown(f":gray[{badge_text}]")
-                with mcol2:
-                    st.caption(f"{row['views_formatted']} views")
-                with mcol3:
-                    st.caption(f"{row['social_shares']:,} shares")
-                with mcol4:
-                    st.caption(f"{row['reading_time_minutes']} min read")
+                with st.container(border=True):
+                    st.markdown(f"**{row['headline']}**")
+                    st.caption(f"{row['publication_name']} · {row['author_name']} · {row['publish_date'].strftime('%B %d, %Y')}")
+                    st.write(row["subheadline"])
+                    
+                    mcol1, mcol2, mcol3, mcol4 = st.columns(4)
+                    with mcol1:
+                        if badge_color == "red":
+                            st.markdown(f":red[{badge_text}]")
+                        elif badge_color == "green":
+                            st.markdown(f":green[{badge_text}]")
+                        else:
+                            st.markdown(f":gray[{badge_text}]")
+                    with mcol2:
+                        st.caption(f"{row['views_formatted']} views")
+                    with mcol3:
+                        st.caption(f"{row['social_shares']:,} shares")
+                    with mcol4:
+                        st.caption(f"{row['reading_time_minutes']} min read")
+
+# ============================================
+# TAB 2: Cortex Agents
+# ============================================
+with main_tab2:
+    st.subheader("Snowflake Cortex Agents")
+    st.markdown("""
+    This application is powered by **two Snowflake Cortex Agents** that provide intelligent 
+    analysis capabilities. These agents run on-demand (no idle costs) and use natural language 
+    to query the underlying data.
+    """)
+    
+    # Agent cards
+    agent_col1, agent_col2 = st.columns(2)
+    
+    # CEO Briefing Agent
+    with agent_col1:
+        with st.container(border=True):
+            st.markdown("### :material/analytics: CEO Briefing Agent")
+            st.caption("`AI_TRANSFORMATION_NEWS.AGENTS.CEO_BRIEFING`")
+            
+            st.markdown("""
+            **Purpose:** Executive intelligence assistant providing strategic briefings 
+            on AI transformation trends for C-level executives.
+            """)
+            
+            st.markdown("**Capabilities:**")
+            st.markdown("""
+            - Analyze sentiment trends (economic optimism, employment outlook)
+            - Track engagement metrics (views, social shares, LinkedIn shares)
+            - Identify topic momentum across Employment, Finance, Policy, etc.
+            - Compare geographic patterns (US, China, Europe, Global)
+            - Weight insights by publication credibility scores
+            """)
+            
+            with st.expander("Example Questions"):
+                st.code("""
+• What topics are generating the most engagement?
+• How has economic sentiment shifted over time?
+• Which regions show the most fear vs hope about AI?
+• What are the top headlines by social shares?
+• Show me the sentiment breakdown by topic category
+                """, language=None)
+            
+            with st.expander("Data Sources"):
+                st.markdown("""
+                | Table | Description |
+                |-------|-------------|
+                | `CEO_INSIGHTS` | 34 articles with sentiment & engagement |
+                | `ARTICLE_INFLUENCE` | Cross-citation analysis |
+                | `CEO_NEWS_ANALYTICS` | Semantic view for NL queries |
+                """)
+            
+            st.markdown("**Metrics Available:**")
+            metrics_df = pd.DataFrame({
+                "Category": ["Sentiment", "Sentiment", "Sentiment", "Engagement", "Engagement", "Engagement"],
+                "Metric": ["overall_sentiment", "economic_optimism", "employment_outlook", 
+                          "total_views", "social_shares", "linkedin_shares"],
+                "Range": ["-1 to +1", "-1 to +1", "-1 to +1", "Count", "Count", "Count"]
+            })
+            st.dataframe(metrics_df, hide_index=True, use_container_width=True)
+    
+    # Cost Optimizer Agent
+    with agent_col2:
+        with st.container(border=True):
+            st.markdown("### :material/savings: Cost Optimizer Agent")
+            st.caption("`AI_TRANSFORMATION_NEWS.AGENTS.COST_OPTIMIZER`")
+            
+            st.markdown("""
+            **Purpose:** Snowflake cost optimization expert that analyzes warehouse 
+            usage and recommends ways to minimize compute costs.
+            """)
+            
+            st.markdown("**Capabilities:**")
+            st.markdown("""
+            - Analyze warehouse credit consumption patterns
+            - Identify expensive queries and usage patterns
+            - Recommend auto-suspend and sizing optimizations
+            - Track hour-of-day and day-of-week usage trends
+            - Assess queue times to detect undersized warehouses
+            """)
+            
+            with st.expander("Example Questions"):
+                st.code("""
+• Which warehouses consume the most credits?
+• What are the peak usage hours?
+• Show me query execution times by warehouse
+• Are there any warehouses with high queue times?
+• What's the credit consumption trend by day of week?
+                """, language=None)
+            
+            with st.expander("Data Sources"):
+                st.markdown("""
+                | View | Description |
+                |------|-------------|
+                | `WAREHOUSE_COSTS` | 90 days of credit consumption |
+                | `QUERY_COSTS` | 30 days of query performance |
+                | `WAREHOUSE_COST_ANALYTICS` | Semantic view for analysis |
+                """)
+            
+            st.markdown("**Optimization Recommendations:**")
+            st.markdown("""
+            - **Auto-suspend:** 1-5 minutes for most workloads
+            - **Sizing:** Right-size based on queue time
+            - **Scheduling:** Move jobs to off-peak hours
+            - **Queries:** Optimize high bytes_scanned queries
+            """)
+    
+    # How to use section
+    st.markdown("---")
+    st.subheader("How to Use These Agents")
+    
+    st.markdown("""
+    Cortex Agents can be invoked via SQL or the Snowflake UI. They process natural language 
+    questions and automatically query the underlying semantic views.
+    """)
+    
+    use_col1, use_col2 = st.columns(2)
+    
+    with use_col1:
+        st.markdown("**Via SQL:**")
+        st.code("""
+SELECT SNOWFLAKE.CORTEX.AGENT_RUN(
+  '{"agent": "AI_TRANSFORMATION_NEWS.AGENTS.CEO_BRIEFING", 
+    "messages": [{"role": "user", "content": [
+      {"type": "text", "text": "Your question here"}
+    ]}]}'
+) AS response;
+        """, language="sql")
+    
+    with use_col2:
+        st.markdown("**Via Snowflake UI:**")
+        st.markdown("""
+        1. Navigate to **AI & ML** → **Cortex Agents**
+        2. Select the agent (`CEO_BRIEFING` or `COST_OPTIMIZER`)
+        3. Type your question in natural language
+        4. Review the response and any generated SQL
+        """)
+    
+    # Architecture diagram
+    st.markdown("---")
+    st.subheader("Architecture")
+    
+    st.markdown("""
+    ```
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                        User Question                                 │
+    │                 "What topics have the most fear?"                    │
+    └─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                      Cortex Agent                                    │
+    │  ┌─────────────────┐    ┌─────────────────┐    ┌────────────────┐  │
+    │  │  Orchestration  │───▶│  Tool Selection │───▶│  LLM Response  │  │
+    │  │     Model       │    │                 │    │   Generation   │  │
+    │  └─────────────────┘    └─────────────────┘    └────────────────┘  │
+    └─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                     Semantic View                                    │
+    │         CEO_NEWS_ANALYTICS / WAREHOUSE_COST_ANALYTICS               │
+    │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
+    │  │  Dimensions  │  │   Metrics    │  │  AI SQL Generation Hints │  │
+    │  │  (topic,     │  │  (sentiment, │  │  (business context &     │  │
+    │  │   region)    │  │   views)     │  │   query patterns)        │  │
+    │  └──────────────┘  └──────────────┘  └──────────────────────────┘  │
+    └─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    Underlying Views                                  │
+    │     CEO_INSIGHTS ◄── HEADLINES + SENTIMENT + CONSUMPTION            │
+    │     WAREHOUSE_COSTS ◄── SNOWFLAKE.ACCOUNT_USAGE                     │
+    └─────────────────────────────────────────────────────────────────────┘
+    ```
+    """)
+    
+    # Cost information
+    st.markdown("---")
+    st.subheader("Cost Model")
+    
+    cost_col1, cost_col2, cost_col3 = st.columns(3)
+    
+    with cost_col1:
+        with st.container(border=True):
+            st.markdown("**Idle Cost**")
+            st.markdown("# $0")
+            st.caption("Agents only run when invoked")
+    
+    with cost_col2:
+        with st.container(border=True):
+            st.markdown("**Per Invocation**")
+            st.markdown("# Credits + Tokens")
+            st.caption("Warehouse compute + LLM usage")
+    
+    with cost_col3:
+        with st.container(border=True):
+            st.markdown("**Storage**")
+            st.markdown("# Minimal")
+            st.caption("Agent definitions are metadata only")

@@ -1,0 +1,34 @@
+{
+  "models": {
+    "orchestration": "auto"
+  },
+  "orchestration": {
+    "budget": {
+      "seconds": 900,
+      "tokens": 400000
+    }
+  },
+  "instructions": {
+    "orchestration": "You are a Snowflake cost optimization expert. ALWAYS use the query_warehouse_costs tool to get real data when answering questions about warehouse costs, credit consumption, usage patterns, or optimization.\n\nWhen the user asks about costs or optimization:\n1. IMMEDIATELY call the query_warehouse_costs tool to get the actual data\n2. Analyze the results to identify top spenders, patterns, and issues\n3. Provide specific, actionable recommendations based on the data\n\nCost optimization recommendations to consider:\n- Auto-suspend settings (recommend 1-5 minutes for most workloads)\n- Warehouse sizing (right-size based on queue time and execution time)\n- Query optimization (identify expensive queries by bytes scanned)\n- Scheduling (move non-urgent workloads to off-peak hours)\n\nAlways base your recommendations on actual data from the tool.",
+    "response": "Provide clear, actionable cost optimization recommendations based on the queried data. Format recommendations as numbered steps with specific SQL commands to implement each change."
+  },
+  "tools": [
+    {
+      "tool_spec": {
+        "type": "cortex_analyst_text_to_sql",
+        "name": "query_warehouse_costs",
+        "description": "Query warehouse cost and usage data including credit consumption by warehouse, usage patterns by hour and day, query execution times, queue times, and bytes scanned. Use this tool to analyze warehouse costs, identify expensive warehouses, find usage patterns, and discover optimization opportunities."
+      }
+    }
+  ],
+  "tool_resources": {
+    "query_warehouse_costs": {
+      "execution_environment": {
+        "query_timeout": 299,
+        "type": "warehouse",
+        "warehouse": "COMPUTE_WH"
+      },
+      "semantic_view": "AI_TRANSFORMATION_NEWS.AGENTS.WAREHOUSE_COST_ANALYTICS"
+    }
+  }
+}

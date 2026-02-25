@@ -1,0 +1,259 @@
+name: WAREHOUSE_COST_ANALYTICS
+description: >
+  Semantic model for analyzing Snowflake warehouse costs and identifying 
+  optimization opportunities. Use this to find expensive warehouses, 
+  analyze usage patterns, and recommend cost-saving measures.
+
+tables:
+  - name: WAREHOUSE_COSTS
+    base_table:
+      database: AI_TRANSFORMATION_NEWS
+      schema: AGENTS
+      table: WAREHOUSE_COSTS
+    description: >
+      Hourly warehouse credit consumption data from the last 90 days. 
+      Each row represents one hour of warehouse activity with credits used.
+    
+    dimensions:
+      - name: warehouse_name
+        expr: warehouse_name
+        description: Name of the virtual warehouse consuming credits
+        sample_values:
+          - COMPUTE_WH
+          - LOADING_WH
+          - ANALYTICS_WH
+      
+      - name: usage_date
+        expr: usage_date
+        description: Date when credits were consumed
+        data_type: DATE
+      
+      - name: usage_week
+        expr: usage_week
+        description: Week when credits were consumed (for weekly aggregations)
+        data_type: DATE
+      
+      - name: usage_month
+        expr: usage_month
+        description: Month when credits were consumed (for monthly aggregations)
+        data_type: DATE
+      
+      - name: day_of_week
+        expr: day_of_week
+        description: Day of week (1=Sunday through 7=Saturday) - useful for identifying weekend vs weekday patterns
+        data_type: NUMBER
+      
+      - name: hour_of_day
+        expr: hour_of_day
+        description: Hour of the day (0-23) - useful for identifying peak usage hours
+        data_type: NUMBER
+
+    time_dimensions:
+      - name: start_time
+        expr: start_time
+        description: Timestamp when the metering period started
+        data_type: TIMESTAMP
+
+    measures:
+      - name: total_credits
+        expr: SUM(credits_used)
+        description: Total credits consumed by warehouses
+        default_aggregation: sum
+      
+      - name: compute_credits
+        expr: SUM(credits_used_compute)
+        description: Credits used for compute operations
+        default_aggregation: sum
+      
+      - name: cloud_services_credits
+        expr: SUM(credits_used_cloud_services)
+        description: Credits used for cloud services (metadata operations)
+        default_aggregation: sum
+      
+      - name: avg_hourly_credits
+        expr: AVG(credits_used)
+        description: Average credits per hour
+        default_aggregation: avg
+      
+      - name: active_hours
+        expr: COUNT(DISTINCT start_time)
+        description: Number of hours the warehouse was active
+        default_aggregation: sum
+
+  - name: QUERY_COSTS
+    base_table:
+      database: AI_TRANSFORMATION_NEWS
+      schema: AGENTS
+      table: QUERY_COSTS
+    description: >
+      Query execution history from the last 30 days with performance metrics.
+      Use to identify expensive queries, slow-running patterns, and optimization opportunities.
+    
+    dimensions:
+      - name: warehouse_name
+        expr: warehouse_name
+        description: Warehouse that executed the query
+      
+      - name: warehouse_size
+        expr: warehouse_size
+        description: Size of the warehouse (X-Small, Small, Medium, Large, etc.)
+        sample_values:
+          - X-Small
+          - Small
+          - Medium
+          - Large
+          - X-Large
+      
+      - name: user_name
+        expr: user_name
+        description: User who ran the query
+      
+      - name: role_name
+        expr: role_name
+        description: Role used to execute the query
+      
+      - name: query_type
+        expr: query_type
+        description: Type of SQL statement (SELECT, INSERT, CREATE, etc.)
+        sample_values:
+          - SELECT
+          - INSERT
+          - CREATE_TABLE_AS_SELECT
+          - MERGE
+      
+      - name: database_name
+        expr: database_name
+        description: Database the query ran against
+      
+      - name: execution_status
+        expr: execution_status
+        description: Whether query succeeded or failed
+        sample_values:
+          - SUCCESS
+          - FAIL
+      
+      - name: query_hash
+        expr: query_parameterized_hash
+        description: Hash of parameterized query text - use to group similar queries
+      
+      - name: query_date
+        expr: query_date
+        description: Date when the query was executed
+        data_type: DATE
+
+    time_dimensions:
+      - name: start_time
+        expr: start_time
+        description: When the query started
+        data_type: TIMESTAMP
+
+    measures:
+      - name: query_count
+        expr: COUNT(*)
+        description: Number of queries executed
+        default_aggregation: sum
+      
+      - name: total_execution_time
+        expr: SUM(execution_time_seconds)
+        description: Total execution time in seconds
+        default_aggregation: sum
+      
+      - name: avg_execution_time
+        expr: AVG(execution_time_seconds)
+        description: Average query execution time in seconds
+        default_aggregation: avg
+      
+      - name: total_queue_time
+        expr: SUM(queue_time_seconds)
+        description: Total time queries spent waiting in queue (indicates warehouse too small)
+        default_aggregation: sum
+      
+      - name: total_bytes_scanned
+        expr: SUM(bytes_scanned)
+        description: Total bytes scanned by queries
+        default_aggregation: sum
+      
+      - name: avg_bytes_scanned
+        expr: AVG(bytes_scanned)
+        description: Average bytes scanned per query
+        default_aggregation: avg
+      
+      - name: failed_queries
+        expr: SUM(CASE WHEN execution_status = 'FAIL' THEN 1 ELSE 0 END)
+        description: Number of failed queries
+        default_aggregation: sum
+
+  - name: WAREHOUSE_EVENTS
+    base_table:
+      database: AI_TRANSFORMATION_NEWS
+      schema: AGENTS
+      table: WAREHOUSE_EVENTS
+    description: >
+      Warehouse lifecycle events including suspensions, resumes, and scaling.
+      Use to analyze auto-suspend effectiveness and scaling patterns.
+    
+    dimensions:
+      - name: warehouse_name
+        expr: warehouse_name
+        description: Name of the warehouse
+      
+      - name: event_name
+        expr: event_name
+        description: Type of event that occurred
+        sample_values:
+          - RESUME_WAREHOUSE
+          - SUSPEND_WAREHOUSE
+          - RESIZE_WAREHOUSE
+      
+      - name: event_reason
+        expr: event_reason
+        description: Why the event occurred (user action, auto-suspend, etc.)
+        sample_values:
+          - AUTO_SUSPEND
+          - USER
+          - SYSTEM
+      
+      - name: user_name
+        expr: user_name
+        description: User who triggered the event (if applicable)
+
+    time_dimensions:
+      - name: event_time
+        expr: timestamp
+        description: When the event occurred
+        data_type: TIMESTAMP
+
+    measures:
+      - name: event_count
+        expr: COUNT(*)
+        description: Number of warehouse events
+        default_aggregation: sum
+      
+      - name: resume_count
+        expr: SUM(CASE WHEN event_name = 'RESUME_WAREHOUSE' THEN 1 ELSE 0 END)
+        description: Number of times warehouse was resumed
+        default_aggregation: sum
+      
+      - name: suspend_count
+        expr: SUM(CASE WHEN event_name = 'SUSPEND_WAREHOUSE' THEN 1 ELSE 0 END)
+        description: Number of times warehouse was suspended
+        default_aggregation: sum
+
+custom_instructions: |
+  You are a Snowflake cost optimization assistant. Your goal is to help users 
+  minimize warehouse costs while maintaining performance.
+  
+  When analyzing costs:
+  1. First identify the top warehouses by credit consumption
+  2. Look for usage patterns (peak hours, weekend usage, idle time)
+  3. Check for queuing time which indicates undersized warehouses
+  4. Look for repeated similar queries that could benefit from caching
+  
+  Cost optimization recommendations to consider:
+  - Auto-suspend settings (recommend 1-5 minutes for most workloads)
+  - Warehouse sizing (right-size based on queue time and execution time)
+  - Query optimization (identify expensive queries by bytes scanned)
+  - Scheduling (move non-urgent workloads to off-peak hours)
+  - Multi-cluster warehouses for variable workloads
+  
+  Always provide specific, actionable recommendations with estimated savings.
